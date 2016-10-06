@@ -1,0 +1,46 @@
+﻿<html style="overflow:hidden">
+  <head>
+    <script type='text/javascript' src='https://www.google.com/jsapi'></script>
+    <script type='text/javascript'>
+     google.load('visualization', '1', {'packages': ['geochart',"corechart"]});
+
+     //google.setOnLoadCallback(drawMarkersMap);
+
+      function drawMarkersMap(s,mesInicialFinalString,nomeGrupo) 
+	  {
+		  var s = "[['Filial',   'Orçado', 'Realizado'] ,"+s+" ]";
+		  
+		  eval('var table = '+s);
+		  
+		  var data = google.visualization.arrayToDataTable(table);
+		  var data2 = google.visualization.arrayToDataTable(table);
+		  var options = {
+			region: 'BR',
+			displayMode: 'markers',
+			colorAxis: {colors: ['#d3363b', 'black']}
+		  };
+
+		  var chart = new google.visualization.GeoChart(document.getElementById('chart_div'));
+		  chart.draw(data, options);
+		  
+		 var options2 = {
+          title: 'Total Orçado x Realizado - Filiais		| Período: '+mesInicialFinalString+'		| Grupo Contábil: '+nomeGrupo,
+          hAxis: {title: 'Orçado x Realizado - Filiais', titleTextStyle: {color: '#d3363b'}},
+		  colors: ['#d3363b', 'black']
+        };
+
+        var chart = new google.visualization.ColumnChart(document.getElementById('col_chart'));
+        chart.draw(data2, options2);
+
+    }
+	function drawGeoMap(s,mesInicialFinalString,nomeGrupo)
+	{
+		drawMarkersMap(s,mesInicialFinalString,nomeGrupo);
+	}
+    </script>
+  </head>
+  <body>
+    <div id="chart_div" style="width: 800px; height: 400px;"></div>
+	<div id="col_chart" style="height: 400px; position: absolute; left: 600px; top: 0px; width: 500px;"></div>
+  </body>
+</html>

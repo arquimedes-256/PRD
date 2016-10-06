@@ -1,0 +1,32 @@
+<html>
+  <head>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">
+      google.load("visualization", "1", {packages:["map"]});
+      google.setOnLoadCallback(drawMap);
+      function drawMap() {
+      var data = google.visualization.arrayToDataTable([
+        ['Filial',   'Orçado', 'Realizado'],
+        ['Matriz - Rio de Janeiro',      2761477,    1285.31],
+        ['Rio de Janeiro',      2761477,    1285.31],
+        ['Sepetiba',     1324110,    181.76],
+        ['Rio Grande do Sul',    959574,     117.27],
+        ['Santos',     907563,     130.17],
+        ['Paranaguá',   655875,     158.9],
+        ['Itajaí',     607906,     243.60],
+        ['Itaguaí',   380181,     140.7],
+        ['Barra dos Coqueiros',  371282,     102.41],
+        ['Maceió', 67370,      213.44],
+        ['Guamaré',     52192,      43.43]
+      ]);
+
+        var map = new google.visualization.Map(document.getElementById('map_div'));
+        map.draw(data, {showTip: true});
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="map_div" style="width: 400px; height: 300px"></div>
+  </body>
+</html>

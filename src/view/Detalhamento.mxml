@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="427" height="609">
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import utils.CopyUtils;
+			import utils.ExcelUtil;
+			
+			[Bindable]
+			private var detalhamentoList:ArrayCollection;
+			private var closeHandler:Function;
+			
+			protected function serviceDetalhamento_resultHandler(event:ResultEvent):void
+			{
+				detalhamentoList = event.result.prd.row as ArrayCollection;	
+				for (var i:int = 0; i < event.result.prd.row.length; i++) 
+				{
+					var R:Object = event.result.prd.row[i]
+					R.formatedValor 		= 	formatCost((String(R['VALOR']).replace(',','.')))
+				}
+			}
+			public function pesquisar(mesInicial:String,mesFinal:String,conta:String,nomeConta:String,periodo:String,filial:String,vlrRealizado:String,isPositivo:Boolean,closeDetalhamento:Function,ano:int):void
+			{
+				serviceDetalhamento.send
+					(
+						{
+							metodo:'ListarDetalhamento',
+							mesInicial:mesInicial,
+							mesFinal:mesFinal,
+							conta:conta,
+							filial:filial,
+							ano:ano
+						}
+					);
+				//lblPeriodo.text = periodo;
+				//lblFilial.text = filial;
+				//lblNomeDaConta.text = nomeConta;
+				panelDetail.title = nomeConta;
+				closeHandler = closeDetalhamento;
+				if(isPositivo)
+				{
+					//lblTotalLancado.setStyle("color",0x00CC00);
+				}
+				else
+				{
+					//lblTotalLancado.setStyle("color",0xd3363b);
+				}
+				//lblTotalLancado.text = vlrRealizado;
+			}
+			
+			protected function exportarDetalhamento(event:MouseEvent):void
+			{
+				ExcelUtil.advancedDataGridToExcel(adg1,"PRD_DETALHAMENTO.csv");
+			}
+			public function formatCost(v:String, 
+									   decimal_places:int = 0, 
+									   currency_symbol:String = "", 
+									   placement:int = 0):String
+			{
+				v = String(Number(v).toFixed(decimal_places));
+				var result:String = new String();
+				if(decimal_places == 0){
+				}else{
+					result = v.substr(-1-decimal_places);
+					v = v.substr(0, v.length-1-decimal_places);
+				}
+				while( v.length > 3 ){
+					result = "." + v.substr(-3) + result;
+					v = v.substr(0, v.length-3);
+				}
+				if(v.length > 0){
+					if(placement == 0){
+						result = currency_symbol + " " + v + result;
+					}else if(placement == 1){
+						result = v + result + " " + currency_symbol;
+					}else{
+						result = v + result;
+					}	
+				}
+				result = result.replace("-.","-")
+				result = result.replace(/^\./,"")
+				return result;
+			}//closes formatCost
+			
+			private function sortCompareFunctionOrcado(itemA:Object,itemB:Object):int {
+				
+				return ObjectUtil.numericCompare(
+					Number(new String(itemA['VALOR']).replace(',','.')),
+					Number(new String(itemB['VALOR']).replace(',','.')));
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:HTTPService id="serviceDetalhamento" 
+					   method="GET" 
+					   showBusyCursor="true" 
+					   url="http://www.topweb.sulnorte.com.br/top/xml/action/PRDAction.php"
+					   result="serviceDetalhamento_resultHandler(event)"/>
+	</fx:Declarations>
+	
+	<s:Panel x="19" y="33" width="100%" height="609" title="Detalhamento Contábil:" id="panelDetail">
+		
+		<mx:AdvancedDataGrid id="adg1" x="0" y="0" width="100%" height="100%"
+							 dataProvider="{detalhamentoList}" 
+							 allowMultipleSelection="true" 
+							 copy="new CopyUtils().onCopy(event)"
+							 doubleClickEnabled="true">
+			<mx:columns>
+				<mx:AdvancedDataGridColumn headerText="CC" dataField="COD_CENTRO_CUSTO" width="80" />
+				<mx:AdvancedDataGridColumn headerText="Data" dataField="EMISSAO" width="76" />
+				<mx:AdvancedDataGridColumn headerText="Valor" dataField="formatedValor" textAlign="right"/>
+				<mx:AdvancedDataGridColumn headerText="Descrição" dataField="DESCRICAO" width="150" wordWrap="true"/>
+			</mx:columns>
+		</mx:AdvancedDataGrid>
+		<!--
+		<s:Button x="10" y="510" width="100%" height="38" fontWeight="bold"
+				  icon="@Embed('../bin-debug/assets/excel.png')" click="exportarDetalhamento(event)"/>
+		-->
+	</s:Panel>
+</s:Group>

@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="1248" height="724" xmlns:flexiframe="com.google.code.flexiframe.*" xmlns:view="view.*">
+	<fx:Declarations>
+		<s:HTTPService id="serviceOrcadoRealizado" 
+					   method="GET" 
+					   showBusyCursor="true" 
+					   url="http://www.topweb.sulnorte.com.br/top/xml/action/PRDAction.php"
+					   result="serviceOrcadoRealizado_resultHandler(event)"/>
+		<s:HTTPService id="serviceGrupoContas" 
+					   method="GET" 
+					   showBusyCursor="true" 
+					   url="http://www.topweb.sulnorte.com.br/top/xml/action/PRDAction.php"
+					   result="serviceGrupoContas_resultHandler(event)">
+		</s:HTTPService>
+		<s:HTTPService id="serviceGrupoContasPessoal" 
+						   method="GET" 
+						   showBusyCursor="true" 
+						   url="http://www.topweb.sulnorte.com.br/top/xml/action/PRDAction.php"
+						   result="serviceGrupoContasPessoal_resultHandler(event)">
+		</s:HTTPService>
+		<s:ArrayList id="listaAnos">
+			<fx:Object label="2013" value="2013" />
+			<fx:Object label="2014" value="2014" />
+			<fx:Object label="2015" value="2015" />
+			<fx:Object label="2016" value="2016" />
+		</s:ArrayList>
+		<s:ArrayList id="listaMeses">
+			<fx:Object label="Janeiro" value="1" />
+			<fx:Object label="Fevereiro" value="2" />
+			<fx:Object label="Março" value="3" />
+			<fx:Object label="Abril" value="4" />
+			<fx:Object label="Maio" value="5" />
+			<fx:Object label="Junho" value="6" />
+			<fx:Object label="Julho" value="7" />
+			<fx:Object label="Agosto" value="8" />
+			<fx:Object label="Setembro" value="9" />
+			<fx:Object label="Outubro" value="10" />
+			<fx:Object label="Novembro" value="11" />
+			<fx:Object label="Dezembro" value="12" />
+		</s:ArrayList>
+		<s:ArrayList id="listaFiliais">
+			<fx:Object label="Matriz" value="MTZ" />
+			<fx:Object label="Rio de Janeiro" value="RJ1" />
+			<fx:Object label="Salvador" value="SDR" />
+			<fx:Object label="Santos" value="STR" />
+			<fx:Object label="Vitória" value="VIT" />
+			<fx:Object label="Maceió" value="MAC" />
+			<fx:Object label="Itajaí" value="ITA" />
+			<fx:Object label="Sepetiba" value="SEP" />
+			<fx:Object label="Paranaguá" value="PNG" />
+			<fx:Object label="Rio Grande" value="RGD" />
+		</s:ArrayList>
+		<s:ArrayList id="listaGrupoContabRaiz">
+			<fx:Object childrens="{[1,2,3]}" label="Pessoal Operacional"/>
+			<fx:Object childrens="{[4,5]}" label="Custos de Afretamento"/>
+			<fx:Object childrens="{[6]}" label="Custo de Combustível"/>
+			<fx:Object childrens="{[7,8,9,10]}" label="Desp. Tec. e Manutenção"/>
+			<fx:Object childrens="{[11]}">
+				<fx:label><![CDATA[Seguros e P&I]]></fx:label>
+			</fx:Object>
+			<fx:Object childrens="{[12,13,14,15,16]}" label="Outras Despesas Operacionais"/>
+			<fx:Object childrens="{[17]}" label="Despesas Administrativas"/>
+			<fx:Object childrens="{[18]}" label="Desp. Comerc.(comissões)"/>
+		</s:ArrayList>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.collections.IList;
+			import mx.controls.Alert;
+			import mx.controls.PopUpMenuButton;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.PopUpAnchor;
+			import spark.events.IndexChangeEvent;
+			import spark.primitives.Rect;
+			
+			import utils.CopyUtils;
+			import utils.ExcelUtil;
+			[Bindable]
+			protected var contasList:Object;
+			[Bindable]
+			protected var grupoContasList:ArrayCollection;
+			[Bindable]
+			protected var grupoContasFiltrados:ArrayCollection;
+			
+			[Bindable]
+			protected var grupoContasPessoal:ArrayCollection;
+			
+			protected var idGrupoSelecionado:int;
+			
+			[Bindable]
+			protected var totalOrcado:Number = 0;
+			[Bindable]
+			protected var totalRealizado:Number = 0;
+			[Bindable]
+			protected var totalDiferenca:Number = 0;
+			
+			//private var detalhamento:Detalhamento = new Detalhamento();
+			private var orcamentoGeograficoView:OrcamentoGeografico = new OrcamentoGeografico();
+			
+			protected function pesquisar(e:Event):void
+			{
+				if(cmbGrupo.selectedIndex != -1 && cmbGrupo.selectedItem.NOME_GRUPO == 'Todos')
+				{
+					serviceOrcadoRealizado.send
+						(
+							{
+								metodo:'ListarOrcadoRealizado',
+								mesInicial:cmbMesInicial.selectedItem.value,
+								mesFinal:cmbMesFinal.selectedItem.value,
+								grupoConta:listaGrupoContabRaiz.getItemAt(idGrupoSelecionado).childrens.join(),
+								filial:cmbResponsavel.selectedIndex == -1 ? cmbFilial.selectedItem.value : lblFilial.text,
+								ano:cmbAno.selectedItem.value
+							}
+						);
+				}
+				else
+				{
+					serviceOrcadoRealizado.send
+						(
+							{
+								metodo:'ListarOrcadoRealizado',
+								mesInicial:cmbMesInicial.selectedItem.value,
+								mesFinal:cmbMesFinal.selectedItem.value,
+								grupoConta:cmbResponsavel.selectedIndex == -1 ? cmbGrupo.selectedItem.ID_GRUPO : cmbResponsavel.selectedItem.ID_GRUPO,
+								filial:cmbResponsavel.selectedIndex == -1 ? cmbFilial.selectedItem.value : lblFilial.text,
+								ano:cmbAno.selectedItem.value
+							}
+						);
+				}
+			}
+			protected function serviceOrcadoRealizado_resultHandler(event:ResultEvent):void
+			{
+				if(serviceOrcadoRealizado.lastResult.prd.retorno.codigo != "0")
+				{
+					Alert.show("Nenhum resultado encontrado.","Falhou!");
+				}
+				try
+				{
+					contasList = serviceOrcadoRealizado.lastResult.prd;	
+					(contasList.row as IList).removeItemAt((contasList.row as IList).length-1)
+				}
+				catch(e:Error){trace(e.getStackTrace())}
+				
+				totalOrcado = 0;
+				totalRealizado = 0;
+				totalDiferenca = 0; 
+				for (var i:int = 0; i < event.result.prd.row.length; i++) 
+				{
+					totalOrcado += 		Number(String(event.result.prd.row[i]['PREV']).replace(',','.'));
+					totalRealizado += 	Number(String(event.result.prd.row[i]['REALIZADO']).replace(',','.'));
+					totalDiferenca += 	Number(String(event.result.prd.row[i]['DIFERENCA']).replace(',','.'));
+				}
+				for (var i:int = 0; i < event.result.prd.row.length; i++) 
+				{
+					var R:Object = event.result.prd.row[i]
+						
+					R.formatedPrev 				= 	formatCost((String(event.result.prd.row[i]['PREV']).replace(',','.')))
+					R.formatedRealizado 		= 	formatCost((String(event.result.prd.row[i]['REALIZADO']).replace(',','.')))
+					R.formatedDiferenca			=	formatCost((String(event.result.prd.row[i]['DIFERENCA']).replace(',','.')))
+				}
+				
+				ExternalInterface.call("drawChart",totalOrcado,totalRealizado,getMesAtualString());
+				lblTotalOrcado.text = formatar(totalOrcado.toString());
+				lblTotalRealizado.text = formatar(totalRealizado.toString());
+				lblTotalDiferenca.text = formatar(totalDiferenca.toString());
+				
+				if(totalDiferenca == 0)
+				{
+					lblTotalDiferenca.setStyle("color",0x000000);
+				}
+				if(totalDiferenca < 0)
+				{
+					lblTotalDiferenca.setStyle("color",0xD50000);
+				}
+				else
+				{
+					lblTotalDiferenca.setStyle("color",0x004D40);
+				}
+			}
+			protected function serviceGrupoContas_resultHandler(event:ResultEvent):void
+			{
+				grupoContasList = event.result.prd.row as ArrayCollection;
+			}			
+			public function myStyleFunc(data:Object, column:AdvancedDataGridColumn):Object 
+			{
+				if(parseFloat(data[column.dataField])<0)
+				{
+					return {color:0xD50000}; 
+				}
+				else
+				{
+					return {color:0x004D40}; 
+				}
+				return data;	    
+			}
+			protected function PercentFormatter(item:Object, column:AdvancedDataGridColumn):String
+			{
+				var returnLabel:String = "";
+				var dataField:String = column.dataField
+				returnLabel = formatCost(String(parseInt(item[dataField].toString().replace(',','.'))));
+				return returnLabel;
+			}
+			private function formatar(number:String,simbol:String="R$ "):String
+			{
+				var number:String = number.toString(), 
+					dollars:String = number.split('.')[0], 
+					cents:String = (number.split('.')[1] || '') +'00';
+				dollars = dollars.split('').reverse().join('')
+					.replace(/(\d{3}(?!$))/g, '$1,')
+					.split('').reverse().join('');
+				return simbol + dollars.replace(/^-,/,"-") + '.' + cents.slice(0, 2);
+			}
+			
+			protected function detalharConta(event:MouseEvent):void
+			{
+				if(cmbFilial.selectedIndex ==-1)return;
+				if(contasDataGrid.selectedItem)
+				{
+					//iFrameWithJSfunctions.visible = false;
+					//PopUpManager.addPopUp(detalhamento,this,true);
+					detalhamento
+					.pesquisar(
+						cmbMesInicial.selectedItem.value,
+						cmbMesFinal.selectedItem.value,
+						contasDataGrid.selectedItem['COD_CONTA_CONTABIL'],
+						contasDataGrid.selectedItem['NOME_CONTA_CONTABIL'],
+						cmbMesInicial.selectedItem.label +" à "+cmbMesFinal.selectedItem.label + " de "+(new Date().fullYear),
+						cmbFilial.selectedItem.value,
+						formatar(String(contasDataGrid.selectedItem['REALIZADO']).replace(',','.')),
+						Number(String(contasDataGrid.selectedItem['DIFERENCA']).replace(',','.').replace("R$",""))>0,
+						closeDetalhamento,
+						cmbAno.selectedItem.value
+					);
+				}
+				contasDataGrid.selectedIndex = -1;
+				detalhamento.y = 0;
+			}
+			public function closeDetalhamento(e:Event):void
+			{
+				//iFrameWithJSfunctions.visible = true;
+				PopUpManager.removePopUp(detalhamento);
+			}
+			public function closeOrcamentoGeografico():void
+			{
+				//iFrameWithJSfunctions.visible = true;
+				PopUpManager.removePopUp(orcamentoGeograficoView);
+			}
+			private function setContasListToNULL():void
+			{
+				contasList = null;
+			}
+			protected function exportarExcelOrcadoRealizado(event:MouseEvent):void
+			{
+				ExcelUtil.advancedDataGridToExcel(contasDataGrid,"PRD_export.csv");
+			}
+			protected function ongridClick(event:MouseEvent):void
+			{
+				/*ExternalInterface.call("drawChartInterno",Number(String(contasDataGrid.selectedItem['PREV']).replace("R$","").replace(',','.')),
+					Number(String(contasDataGrid.selectedItem['REALIZADO']).replace("R$","").replace(',','.')),contasDataGrid.selectedItem['COD_CONTA_CONTABIL'],
+					contasDataGrid.selectedItem['NOME_CONTA_CONTABIL']);
+				*/
+				detalharConta(null)
+			}
+			public function setWelcomeText(object:Object):void
+			{
+				lblUsuario.text = "Usuário "+ object.usuario;
+				lblFilial.text = object.usuario;
+				
+				serviceGrupoContasPessoal.send
+					({
+						metodo:"ListarGrupoContasPessoal",
+						filial:object.usuario
+					});
+				for (var i:int = 0; i < listaFiliais.length; i++) 
+				{
+					if(object.usuario == listaFiliais[i].value)
+					{
+						cmbFilial.selectedIndex = i;
+					}
+				}
+				
+			}
+			protected function openCompararFiliais(event:MouseEvent):void
+			{
+				//iFrameWithJSfunctions.visible = false;
+				orcamentoGeograficoView.loadFromURL(cmbMesInicial.selectedItem.value,
+					cmbMesFinal.selectedItem.value,
+					cmbGrupo.selectedItem.ID_GRUPO || listaGrupoContabRaiz.getItemAt(idGrupoSelecionado).childrens.join(),
+					cmbGrupo.selectedItem.NOME_GRUPO || "Todos",
+					getMesAtualString(),
+					closeOrcamentoGeografico,
+					cmbAno.selectedItem.value);
+				PopUpManager.addPopUp(orcamentoGeograficoView,this,true);
+				orcamentoGeograficoView.y = 70;
+			}
+			public function getMesAtualString():String
+			{
+				return cmbMesInicial.selectedItem.label + " à "+ cmbMesFinal.selectedItem.label + " de "+ new Date().fullYear;
+			}
+			
+			protected function cmbGrupoRaiz_changeHandler(event:IndexChangeEvent):void
+			{
+				cmbGrupo.selectedIndex = -1;
+				cmbResponsavel.selectedIndex = -1;
+				var subGruposSelecionados:Array = cmbGrupoRaiz.selectedItem.childrens;
+					
+				grupoContasFiltrados = new ArrayCollection();
+				grupoContasFiltrados.addItem({NOME_GRUPO:'Todos'});
+				idGrupoSelecionado = cmbGrupoRaiz.selectedIndex;
+				for (var i:int = 0; i < subGruposSelecionados.length; i++) 
+				{
+					grupoContasFiltrados.addItem(grupoContasList[subGruposSelecionados[i]-1]);
+				}
+				cmbGrupo.selectedIndex = 0;
+			}
+			
+			protected function serviceGrupoContasPessoal_resultHandler(event:ResultEvent):void
+			{
+				grupoContasPessoal = event.result.prd.row as ArrayCollection;
+			}
+			
+			protected function cmbResponsavel_changeHandler(event:IndexChangeEvent):void
+			{
+				cmbFilial.selectedIndex = 0;
+				cmbGrupoRaiz.selectedIndex = -1;
+				cmbGrupo.selectedIndex = -1;
+				grupoContasFiltrados = null;
+			}
+			
+			protected function cmbGrupo_changeHandler(event:IndexChangeEvent):void
+			{
+				cmbResponsavel.selectedIndex  = -1;
+			}
+			
+			protected function cmbMesInicial_changeHandler(event:IndexChangeEvent):void
+			{
+				setContasListToNULL();
+				if(cmbMesInicial.selectedIndex > cmbMesFinal.selectedIndex)
+				{
+					cmbMesFinal.selectedIndex = cmbMesInicial.selectedIndex;
+				}
+			}
+			protected function cmbMesFinal_changeHandler(event:IndexChangeEvent):void
+			{
+				setContasListToNULL();
+				if(cmbMesInicial.selectedIndex > cmbMesFinal.selectedIndex)
+				{
+					cmbMesInicial.selectedIndex = cmbMesFinal.selectedIndex;
+				}
+			}
+			private function sortCompareFunctionOrcado(itemA:Object,itemB:Object):int {
+				
+				return ObjectUtil.numericCompare(
+					Number(new String(itemA['PREV']).replace(',','.')),
+					Number(new String(itemB['PREV']).replace(',','.')));
+			}
+			private function sortCompareFunctionReal(itemA:Object,itemB:Object):int {
+				
+				return ObjectUtil.numericCompare(
+					Number(new String(itemA['REALIZADO']).replace(',','.')),
+					Number(new String(itemB['REALIZADO']).replace(',','.')));
+			}
+			private function sortCompareFunctionDiff(itemA:Object,itemB:Object):int {
+				
+				return ObjectUtil.numericCompare(
+					Number(new String(itemA['DIFERENCA']).replace(',','.')),
+					Number(new String(itemB['DIFERENCA']).replace(',','.')));
+			}
+			public function formatCost(v:String, 
+									   decimal_places:int = 0, 
+									   currency_symbol:String = "", 
+									   placement:int = 0):String
+			{
+				v = String(Number(v).toFixed(decimal_places));
+				var result:String = new String();
+				if(decimal_places == 0){
+				}else{
+					result = v.substr(-1-decimal_places);
+					v = v.substr(0, v.length-1-decimal_places);
+				}
+				while( v.length > 3 ){
+					result = "." + v.substr(-3) + result;
+					v = v.substr(0, v.length-3);
+				}
+				if(v.length > 0){
+					if(placement == 0){
+						result = currency_symbol + " " + v + result;
+					}else if(placement == 1){
+						result = v + result + " " + currency_symbol;
+					}else{
+						result = v + result;
+					}	
+				}
+				result = result.replace("-.","-")
+				result = result.replace(/^\./,"")
+				return result;
+			}//closes formatCost
+		]]>
+	</fx:Script> 
+	<s:initialize>
+		<![CDATA[
+			serviceGrupoContas.send
+			({
+				metodo:"ListarGrupoContas"
+			});
+			cmbAno.selectedItem = listaAnos.getItemAt(listaAnos.length-1);
+		]]>
+	</s:initialize>
+	<s:Panel x="87" y="5" width="687" height="67" alpha="0.9"
+			 title="PRD - Programa de Racionalização de Despesas">
+		<s:Label id="lblWelcome" x="10" y="10" text="Bem vindo,"/>
+		<s:Label id="lblUsuario" x="75" y="11" fontWeight="bold" text=""/>
+		<s:Label x="289" y="10" text="Perfil:"/>
+		<s:Label id="lblPerfil" x="326" y="10" fontWeight="bold" text="Usuário PRD"/>
+		<s:Label x="480" y="10" text="Filial:"/>
+		<s:Label id="lblFilial" x="514" y="10" fontWeight="bold" text=""/>
+	</s:Panel>
+	<!--
+	<s:Panel x="782" y="36" width="427" height="609" title="Gráficos" alpha="0.9">
+		<flexiframe:IFrame id="iFrameWithJSfunctions" x="1" y="1" width="420" height="564"
+						   label="Map" overlayDetection="true" source="googlecharts.html">
+		</flexiframe:IFrame>
+	</s:Panel>
+	-->
+	<view:Detalhamento id="detalhamento"  x="782" y="5" width="427" height="609">
+		
+	</view:Detalhamento>
+	<s:Panel x="10" y="80" width="764" height="565" title="Orçado x Realizado" alpha="0.9">
+		<mx:AdvancedDataGrid x="12" y="138" width="740" height="311" 
+							 dataProvider="{contasList.row}" 
+							 id="contasDataGrid" doubleClickEnabled="true" 
+							 doubleClick="detalharConta(event)" 
+							 allowMultipleSelection="true"
+							 click="ongridClick(event)" 
+							 copy="new CopyUtils().onCopy(event)">
+			<mx:columns>
+					<mx:AdvancedDataGridColumn dataField="NOME_CONTA_CONTABIL" headerText="#"  width="280"/>
+					<mx:AdvancedDataGridColumn dataField="COD_CONTA_CONTABIL" headerText="Conta Contábil" width="150"/>
+					<mx:AdvancedDataGridColumn dataField="formatedPrev" 
+											   headerText="Orç" 
+											   textAlign="right"
+											   width="100"
+											   sortCompareFunction="sortCompareFunctionOrcado" />
+					<mx:AdvancedDataGridColumn dataField="formatedRealizado" 
+											   headerText="Real" 
+											   textAlign="right"
+											   width="100"
+											   sortCompareFunction="sortCompareFunctionReal"/>
+					<mx:AdvancedDataGridColumn dataField="formatedDiferenca" 
+											   headerText="Diff" 
+											   textAlign="right"
+											   styleFunction="myStyleFunc"  
+											   width="100"
+											   sortCompareFunction="sortCompareFunctionDiff"/>
+					<mx:AdvancedDataGridColumn 
+											dataField="DIFERENCA_PERC" 
+											headerText="%" 
+											textAlign="right"
+											width="50"
+											styleFunction="myStyleFunc"/>
+			</mx:columns>
+		</mx:AdvancedDataGrid>
+		
+		
+		
+		<s:ComboBox id="cmbMesInicial" x="256" y="91" width="132" 
+					dataProvider="{listaMeses}" 
+					change="cmbMesInicial_changeHandler(event)"/>
+		<s:ComboBox id="cmbMesFinal" x="405" y="91" width="132" 
+					change="cmbMesFinal_changeHandler(event)"
+					dataProvider="{listaMeses}"/>
+		<s:ComboBox id="cmbGrupo" x="12" y="91" width="212" 
+					labelField="NOME_GRUPO" 
+					dataProvider="{grupoContasFiltrados}" 
+					change="cmbGrupo_changeHandler(event)"/>
+		<s:ComboBox id="cmbFilial" x="255" y="36" width="132" 
+					dataProvider="{listaFiliais}" 
+					selectedIndex="0"
+					labelField="label" 
+					change="setContasListToNULL()"/>
+		<s:ComboBox id="cmbGrupoRaiz" x="14" y="37" 
+					width="210" 
+					change="cmbGrupoRaiz_changeHandler(event)" 
+					labelField="label" 
+					dataProvider="{listaGrupoContabRaiz}"/>
+		<s:ComboBox id="cmbResponsavel" x="406" y="36" 
+					width="131" 
+					dataProvider="{grupoContasPessoal}"  
+					labelField="NOME_GRUPO" 
+					change="cmbResponsavel_changeHandler(event)" />
+		<!--
+		<s:Button x="373" y="457" width="196" height="35"
+				  click="detalharConta(event)" enabled="true" fontWeight="bold"
+				  icon="@Embed('../bin-debug/images/lupa_laranja.png')"/>
+		-->
+		<s:Button x="584" y="457" width="168" height="37" fontWeight="bold"  
+				  click="exportarExcelOrcadoRealizado(event)"
+				  icon="assets/excel.png"/>
+		<s:Button x="698" y="19" width="53" height="39" click="openCompararFiliais(event)"
+				  fontWeight="bold" icon="@Embed('../bin-debug/images/filiais.png')"/>
+		
+		<s:Label x="256" y="71" 
+				 fontWeight="bold" 
+				 text="Mês Inicial:"/>
+		<s:Label x="406" y="72" 
+				 fontWeight="bold" 
+				 text="Mês Final:"/>
+		
+		<s:Label x="12" y="71" 
+				 fontWeight="bold" 
+				 text="Sub-Grupo Contábil:"/>
+		
+		<s:Label x="258" y="17" 
+				 fontWeight="bold" 
+				 text="Filial:"/>
+		
+		<s:ComboBox id="cmbAno" x="576" y="91" 
+					width="174" 
+					dataProvider="{listaAnos}" />
+		
+		
+		<s:Label x="19" y="460" width="122" height="19" 
+				 fontSize="12" 
+				 text="Total Orçado:"/>
+		<s:Label x="19" y="480" width="139" height="19" 
+				 fontSize="12" 
+				 text="Total Realizado:"/>
+		<s:Label x="19" y="500" width="139" height="19" 
+				 fontSize="12" 
+				 text="Diferença:"/>
+		
+		<s:Label id="lblTotalOrcado" x="145" y="459" 
+				 width="100" height="19" fontSize="12"
+				 text="{totalOrcado}" textAlign="right"/>
+		<s:Label id="lblTotalRealizado" x="145" y="480" 
+				 width="100" height="19" fontSize="12"
+				 text="{totalRealizado}" textAlign="right"/>
+		<s:Label id="lblTotalDiferenca" x="145" y="500" 
+				 width="100" height="19" fontSize="12"
+				 text="{totalDiferenca}" textAlign="right"/>
+		
+		<s:Label x="14" y="17" fontWeight="bold" text="Grupo Contábil"/>
+		<s:Label x="407" y="18" fontWeight="bold" text="Responsável:"/>
+		<s:Button x="575" y="19" width="114" height="40" click="pesquisar(event)"
+				  fontWeight="bold" icon="@Embed('../bin-debug/images/lupa_azul.png')"/>
+		<s:Label x="575" y="72" fontWeight="bold" text="Ano:"/>
+	</s:Panel>
+	<s:Image x="11" y="10" width="70" height="62" smooth="true" alpha="0.6"
+			 source="@Embed('../bin-debug/images/sulnorte_2.png')"/>
+</s:Group>

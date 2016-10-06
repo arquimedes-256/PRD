@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   width="100%"
+			   height="100%">
+	<fx:Style source="style.css"/>
+	<fx:Script>
+		<![CDATA[
+			import com.greensock.TweenMax;
+			
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			
+			import view.OrcadoRealizado;
+			
+			private var orcadoRealizadoView:OrcadoRealizado = new OrcadoRealizado();
+			
+			protected function onLoginService(event:ResultEvent):void
+			{
+				if(event.result.prd.retorno.codigo == "-1")
+				{
+					Alert.show("Usuário ou senha inválida.","Falhou!");
+				}
+				else
+				{
+					loginSucesso();
+				}
+			}
+			protected function loginSucesso():void
+			{
+				TweenMax.to(loginPanel,.3,{alpha:0,
+					onComplete:function():void
+					{
+						addViewOrcado();
+						loginPanel.visible = false;
+						orcadoRealizadoView.setWelcomeText(
+							{usuario:loginService.lastResult.prd.row[0]['LOGIN_USUARIO']});
+					}
+				});
+			}
+			private function addViewOrcado():void
+			{
+				orcadoRealizadoView.alpha = 0;
+				addElement(orcadoRealizadoView);
+				TweenMax.to(orcadoRealizadoView,.5,{alpha:1});
+			}
+			private function loginUsuario(e:Event):void
+			{
+				loginService.send(
+					{
+						metodo:"LogarPRD",usuario:inptLogin.text,senha:inptSenha.text
+					}
+				);
+			}
+			
+			protected function inptSenha_keyDownHandler(event:KeyboardEvent):void
+			{
+				if(event.keyCode == 13)
+				{
+					loginUsuario(event);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:HTTPService id="loginService" 
+					   result="onLoginService(event)" 
+					   url="http://www.topweb.sulnorte.com.br/top/xml/action/PRDAction.php" showBusyCursor="true"
+					   />
+	</fx:Declarations>
+	<s:Image source="@Embed('../bin-debug/images/bg2.jpg')"/>
+	<s:Panel x="409" y="301" width="431" height="177" alpha="0.9" title="PRD - Programa de Racionalização de Despesas" id="loginPanel">
+		<s:Button x="289" y="103" width="113" height="24" label="Login!" fontWeight="bold" click="loginUsuario(event)"/>
+		<s:Image x="11" y="14" width="103" height="92" smooth="true"
+				 source="@Embed('../bin-debug/images/sulnorte.png')"/>
+		<s:TextInput id="inptLogin" x="183" y="30" width="219"/>
+		<s:TextInput id="inptSenha" x="183" y="65" width="219" keyDown="inptSenha_keyDownHandler(event)" displayAsPassword="true"/>
+		<s:Label x="131" y="35" fontWeight="bold" text="Usuário:"/>
+		<s:Label x="132" y="69" fontWeight="bold" text="Senha:"/>
+	</s:Panel>
+	
+</s:Application>

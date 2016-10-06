@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="1248" height="724" xmlns:flexiframe="com.google.code.flexiframe.*">
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			
+			private var closeHandler:Function;
+			private var mesInicialFinalString:String;
+			private var nomeGrupo:String;
+			
+			private function atualizaDados(dados:Object):void
+			{
+				Alert.show(JSON.stringify(dados));
+			}
+			protected function geoOrcServiceResultHandler(event:ResultEvent):void
+			{
+				try
+				{
+					var rows:Object = geoOrcService.lastResult.prd.row;
+					var stringOff:String = "";
+					for (var i:int = 0; i < rows.length; i++) 
+					{
+						stringOff += "['"+rows[i]['FILIAL_ALOCACAO']+"',"+String(rows[i]['PREV']).replace(',','.')+", "+String(rows[i]['REALIZADO']).replace(',','.')+"]";
+						if(i != rows.length-2)
+						{
+							stringOff += ",";
+						}
+					}
+				}
+				catch(e:Error)
+				{
+				}
+				ExternalInterface.call("drawGeoMap",stringOff,mesInicialFinalString,nomeGrupo);
+			}
+			public function loadFromURL(mesInicial:String,mesFinal:String,grupoConta:String,nomeGrupo:String,mesInicialFinalString:String,closeHandler:Function,ano:int):void
+			{
+				this.mesInicialFinalString = mesInicialFinalString;
+				this.closeHandler = closeHandler;
+				this.nomeGrupo = nomeGrupo;
+				geoOrcService.send({
+					metodo:'ListarOrcadoRealizadoFiliais',
+					mesInicial:mesInicial,
+					mesFinal:mesFinal,
+					grupoConta:grupoConta,
+					ano:ano
+				})
+			}
+			protected function closeGeoOrcamento(event:MouseEvent):void
+			{
+				closeHandler();
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<s:HTTPService id="geoOrcService" 
+					   result="geoOrcServiceResultHandler(event)"
+					   url="http://www.topweb.sulnorte.com.br/top/xml/action/PRDAction.php" showBusyCursor="true"/>
+	</fx:Declarations>
+<s:Panel x="10" y="10" width="1228" title="Orçamento Geográfico">
+	<flexiframe:IFrame id="geoFrameOrcament" source="filiais.html" width="1204" height="502">
+	</flexiframe:IFrame>
+	<s:Button x="1184" y="-29" width="36" label="x" fontWeight="bold" click="closeGeoOrcamento(event)"/>
+</s:Panel>
+</s:Group>
